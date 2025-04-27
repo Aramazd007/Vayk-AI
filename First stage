@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Վայք</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for XLSX processing -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'Noto Sans Armenian';
+            src: url('https://fonts.googleapis.com/css2?family=Noto+Sans+Armenian:wght@400;700&display=swap');
+        }
+        body {
+            font-family: 'Noto Sans Armenian', sans-serif;
+        }
+        .arm-flag-bg {
+            background: linear-gradient(to bottom, #D90012 33.33%, #0033A0 33.33%, #0033A0 66.66%, #F2A800 66.66%);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Main Container -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="arm-flag-bg text-white p-4 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-bold">AI Վայք</h1>
+                <div class="flex space-x-4">
+                    <span id="user-greeting" class="hidden">Բարև, Անանուն</span>
+                    <button id="login-button" class="hover:underline">Մուտք</button>
+                    <button id="logout-button" class="hover:underline hidden">Դուրս գալ</button>
+                    <button id="history-toggle" class="hover:underline">Պատմություն</button>
+                    <button id="settings-toggle" class="hover:underline">Կարգավորումներ</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto flex-1 p-4 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            <!-- Chat Section -->
+            <div class="w-full md:w-2/3 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Զրույց</h2>
+                <!-- Topic Suggestions -->
+                <div class="mb-4 flex flex-wrap gap-2">
+                    <button class="topic-btn bg-blue-100 dark:bg-blue-600 text-gray-800 dark:text-white px-3 py-1 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500" data-topic="Հայոց պատմություն">Հայոց պատմություն</button>
+                    <button class="topic-btn bg-blue-100 dark:bg-blue-600 text-gray-800 dark:text-white px-3 py-1 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500" data-topic="Հայկական մշակույթ">Հայկական մշակույթ</button>
+                    <button class="topic-btn bg-blue-100 dark:bg-blue-600 text-gray-800 dark:text-white px-3 py-1 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-500" data-topic="Զբոսաշրջություն Հայաստանում">Զբոսաշրջություն</button>
+                </div>
+                <div id="chat-container" class="h-96 overflow-y-auto mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div id="chat-messages" class="space-y-4">
+                        <div class="bot-message bg-blue-100 dark:bg-blue-600 p-3 rounded-lg text-gray-800 dark:text-white">
+                            Բարև Ձեզ: Ինչպե՞ս կարող է AI Վայք-ը օգնել Ձեզ: Կարող եք ընտրել թեմա կամ գրել Ձեր հարցը:
+                        </div>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <input
+                        type="text"
+                        id="user-input"
+                        placeholder="Գրեք Ձեր հարցը հայերեն..."
+                        class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:text-white"
+                    />
+                    <button
+                        id="send-button"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                    >
+                        Ուղարկել
+                    </button>
+                    <button
+                        id="voice-button"
+                        class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600"
+                    >
+                        🎤
+                    </button>
+                </div>
+            </div>
+
+            <!-- History Panel -->
+            <div id="history-panel" class="w-full md:w-1/3 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hidden md:block">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Զրույցի Պատմություն</h2>
+                <div id="history-messages" class="space-y-2"></div>
+            </div>
+        </main>
+
+        <!-- Login Modal -->
+        <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Մուտք</h2>
+                <input
+                    type="text"
+                    id="username-input"
+                    placeholder="Ձեր անունը..."
+                    class="w-full p-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:text-white"
+                />
+                <div class="flex space-x-2">
+                    <button id="login-submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                        Մուտք գործել
+                    </button>
+                    <button id="close-login" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 dark:bg-gray-600 dark:text-white">
+                        Փակել
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-200">Կարգավորումներ</h2>
+                <div class="space-y-4">
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="dark-mode-toggle" class="h-5 w-5">
+                        <span class="text-gray-800 dark:text-gray-200">Մութ ռեժիմ</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="voice-feedback-toggle" class="h-5 w-5">
+                        <span class="text-gray-800 dark:text-gray-200">Հնչյունային ծանուցումներ</span>
+                    </label>
+                    <button id="close-settings" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                        Փակել
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // XLSX Processing Script
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+            return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convert sheet to JSON to filter blank rows
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                    // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    // Fallback
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+
+                    // Convert filtered JSON back to CSV
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+
+        // DOM Elements
+        const chatContainer = document.getElementById('chat-messages');
+        const historyContainer = document.getElementById('history-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const voiceButton = document.getElementById('voice-button');
+        const historyToggle = document.getElementById('history-toggle');
+        const historyPanel = document.getElementById('history-panel');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettings = document.getElementById('close-settings');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const voiceFeedbackToggle = document.getElementById('voice-feedback-toggle');
+        const loginModal = document.getElementById('login-modal');
+        const loginButton = document.getElementById('login-button');
+        const logoutButton = document.getElementById('logout-button');
+        const usernameInput = document.getElementById('username-input');
+        const loginSubmit = document.getElementById('login-submit');
+        const closeLogin = document.getElementById('close-login');
+        const userGreeting = document.getElementById('user-greeting');
+        const topicButtons = document.querySelectorAll('.topic-btn');
+
+        // State
+        let chatHistory = [];
+        let currentUser = localStorage.getItem('username') || null;
+        let currentTopic = null;
+
+        // Initialize User
+        function initUser() {
+            if (currentUser) {
+                userGreeting.textContent = `Բարև, ${currentUser}`;
+                userGreeting.classList.remove('hidden');
+                loginButton.classList.add('hidden');
+                logoutButton.classList.remove('hidden');
+            } else {
+                userGreeting.classList.add('hidden');
+                loginButton.classList.remove('hidden');
+                logoutButton.classList.add('hidden');
+            }
+        }
+        initUser();
+
+        // Simulated AI Response Database
+        const responseDatabase = {
+            'Հայոց պատմություն': [
+                {
+                    question: /պատմություն|պատմական|ուրարտու|թագավորություն/i,
+                    answer: 'Հայոց պատմությունը սկսվում է մ.թ.ա. 9-րդ դարում Ուրարտուի թագավորությունից: Վանի թագավորությունը հայտնի էր իր ճարտարապետությամբ և գրավոր համակարգով: Ցանկանու՞մ եք ավելին իմանալ Ուրարտուի կամ այլ ժամանակաշրջանի մասին:'
+                },
+                {
+                    question: /տիգրան մեծ|թագավոր/i,
+                    answer: 'Տիգրան Մեծը (մ.թ.ա. 95–55) Հայաստանի ամենահայտնի թագավորներից է, ով ընդլայնեց Հայաստանի սահմանները մինչև Միջերկրական ծով: Նրա մայրաքաղաքը Տիգրանակերտն էր: Ցանկանու՞մ եք ավելի մանրամասն տեղեկություններ:'
+                }
+            ],
+            'Հայկական մշակույթ': [
+                {
+                    question: /մշակույթ|ավանդույթ|խաչքար|դուդուկ/i,
+                    answer: 'Հայկական մշակույթը հարուստ է ավանդույթներով: Խաչքարերը քարե հուշարձաններ են, որոնք խորհրդանշում են հավատ և արվեստ: Դուդուկը հայկական երաժշտական գործիք է, որը ՅՈՒՆԵՍԿՕ-ի մշակութային ժառանգության մաս է: Ո՞ր ավանդույթի մասին ավելին իմանալ:'
+                },
+                {
+                    question: /տոն|տոներ|տոնակատարություն/i,
+                    answer: 'Հայաստանում կարևոր տոներ են Վարդավառը, Տյառնընդառաջը և Զատիկը: Վարդավառը հայտնի է ջրով խաղերով, իսկ Զատիկը նշում է Քրիստոսի հարությունը: Ո՞ր տոնի մասին ավելին եք ցանկանում իմանալ:'
+                }
+            ],
+            'Զբոսաշրջություն Հայաստանում': [
+                {
+                    question: /տեսարժան|գառնի|տաթև|երևան/i,
+                    answer: 'Հայաստանում տեսարժան վայրերից են Գառնիի հեթանոսական տաճարը, Տաթևի վանքը և Երևանի Հանրապետության հրապարակը: Գառնին մ.թ. 1-ին դարի կառույց է, իսկ Տաթևը հասանելի է աշխարհի ամենաերկար ճոպանուղով: Ո՞ր վայրի մասին ավելին իմանալ:'
+                },
+                {
+                    question: /սևան|ծիծեռնակաբերդ/i,
+                    answer: 'Սևանա լիճը Հայաստանի «կապույտ մարգարիտն» է, իսկ Ծիծեռնակաբերդը Հայոց ցեղասպանության հուշահամալիրն է: Ցանկանու՞մ եք ավելի մանրամասն տեղեկություններ որևէ վայրի մասին:'
+                }
+            ],
+            'General': [
+                {
+                    question: /ով|ինչ է|Հայաստան/i,
+                    answer: 'Հայաստանը Հարավային Կովկասում գտնվող երկիր է, հայտնի իր պատմությամբ և մշակույթով: Երևանը մայրաքաղաքն է: Ի՞նչ կոնկրետ եք ցանկանում իմանալ Հայաստանի մասին:'
+                },
+                {
+                    question: /եղանակ|կլիմա/i,
+                    answer: 'Հայաստանի եղանակը բազմազան է: Երևանում ամառները տաք են (մինչև 35°C), ձմեռները՝ ցուրտ (մինչև -10°C): Ցանկանու՞մ եք իմանալ կոնկրետ վայրի եղանակի մասին:'
+                }
+            ]
+        };
+
+        // Simulate AI Response
+        async function getAIResponse(message, topic = null) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    let response = 'Ներողություն, Ձեր հարցը չեմ հասկանում: Կարո՞ղ եք ավելի հստակ ձևակերպել:';
+                    const normalizedMessage = message.toLowerCase();
+
+                    // Check topic-specific responses
+                    if (topic && responseDatabase[topic]) {
+                        const matched = responseDatabase[topic].find(item => item.question.test(normalizedMessage));
+                        if (matched) {
+                            response = matched.answer;
+                        } else {
+                            response = `Դուք հարցրեցիք ${topic}-ի մասին: Կարո՞ղ եք ավելի կոնկրետ հարց տալ:`;
+                        }
+                    } else {
+                        // Check general responses
+                        const matched = responseDatabase['General'].find(item => item.question.test(normalizedMessage));
+                        if (matched) {
+                            response = matched.answer;
+                        }
+                    }
+
+                    resolve(response);
+                }, 500);
+            });
+        }
+
+        // Add message to chat
+        function addChatMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser
+                ? 'user-message bg-green-100 dark:bg-green-600 p-3 rounded-lg text-right text-gray-800 dark:text-white'
+                : 'bot-message bg-blue-100 dark:bg-blue-600 p-3 rounded-lg text-gray-800 dark:text-white';
+            messageDiv.textContent = content;
+            if (!isUser) {
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.className = 'flex space-x-2 mt-2';
+                feedbackDiv.innerHTML = `
+                    <button class="feedback-btn thumbs-up text-green-500 hover:text-green-700" data-rating="positive">👍</button>
+                    <button class="feedback-btn thumbs-down text-red-500 hover:text-red-700" data-rating="negative">👎</button>
+                `;
+                messageDiv.appendChild(feedbackDiv);
+            }
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            chatHistory.push({ content, isUser });
+            updateHistory();
+        }
+
+        // Update history panel
+        function updateHistory() {
+            historyContainer.innerHTML = '';
+            chatHistory.forEach((msg, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded cursor-pointer';
+                historyItem.textContent = msg.content.substring(0, 50) + (msg.content.length > 50 ? '...' : '');
+                historyItem.addEventListener('click', () => {
+                    chatContainer.scrollTop = chatContainer.children[index].offsetTop;
+                });
+                historyContainer.appendChild(historyItem);
+            });
+        }
+
+        // Send message
+        async function sendMessage(message, topic = null) {
+            if (message) {
+                addChatMessage(message, true);
+                userInput.value = '';
+                const response = await getAIResponse(message, topic);
+                addChatMessage(response);
+            }
+        }
+
+        // Voice Input
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'hy-AM';
+            recognition.interimResults = false;
+
+            voiceButton.addEventListener('click', () => {
+                recognition.start();
+                voiceButton.classList.add('animate-pulse');
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                sendMessage(transcript, currentTopic);
+                voiceButton.classList.remove('animate-pulse');
+            };
+
+            recognition.onend = () => {
+                voiceButton.classList.remove('animate-pulse');
+            };
+        } else {
+            voiceButton.classList.add('hidden');
+        }
+
+        // Event Listeners
+        sendButton.addEventListener('click', () => sendMessage(userInput.value.trim(), currentTopic));
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage(userInput.value.trim(), currentTopic);
+        });
+
+        topicButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                currentTopic = button.dataset.topic;
+                sendMessage(`Խոսենք ${currentTopic}-ի մասին`, currentTopic);
+            });
+        });
+
+        historyToggle.addEventListener('click', () => {
+            historyPanel.classList.toggle('hidden');
+        });
+
+        settingsToggle.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        closeSettings.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        loginButton.addEventListener('click', () => {
+            loginModal.classList.remove('hidden');
+        });
+
+        closeLogin.addEventListener('click', () => {
+            loginModal.classList.add('hidden');
+        });
+
+        loginSubmit.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                currentUser = username;
+                localStorage.setItem('username', username);
+                initUser();
+                loginModal.classList.add('hidden');
+                addChatMessage(`Բարև, ${username}: Ինչպե՞ս կարող է AI Վայք-ը օգնել Ձեզ:`);
+            }
+        });
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('username');
+            currentUser = null;
+            initUser();
+            addChatMessage('Դուք դուրս եք եկել: Ինչպե՞ս կարող է AI Վայք-ը օգնել Ձեզ:');
+        });
+
+        darkModeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('darkMode', darkModeToggle.checked);
+        });
+
+        if (localStorage.getItem('darkMode') === 'true') {
+            darkModeToggle.checked = true;
+            document.body.classList.add('dark');
+        }
+
+        // Feedback Handling
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('feedback-btn')) {
+                const rating = e.target.dataset.rating;
+                alert(`Դուք գնահատեցիք պատասխանը որպես ${rating === 'positive' ? 'դրական' : 'բացասական'}: Շնորհակալություն Ձեր կարծիքի համար:`);
+            }
+        });
+    </script>
+</body>
+</html>
